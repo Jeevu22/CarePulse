@@ -1,104 +1,63 @@
+"""
+Pulsewatch Backend — Flask API
+Run locally with:  python app.py
+Run in Docker via: gunicorn -b 0.0.0.0:5000 app:app
+"""
 import os
-import logging
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, auth
+from flask import Flask, jsonify, request
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from config import config
+from extensions import db, cors
+from core.auth import init_firebase
 
-app = Flask(__name__)
-CORS(app)  # Enable Cross-Origin Resource Sharing for frontend access
 
-# Initialize Firebase Admin SDK
-firebase_initialized = False
-firebase_cred_path = os.getenv('FIREBASE_CREDENTIALS_PATH', 'firebase-key.json')
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(config)
 
-if os.path.exists(firebase_cred_path):
-    try:
-        cred = credentials.Certificate(firebase_cred_path)
-        firebase_admin.initialize_app(cred)
-        logger.info("Firebase Admin SDK initialized successfully.")
-        firebase_initialized = True
-    except Exception as e:
-        logger.error(f"Error initializing Firebase Admin SDK: {e}")
-else:
-    logger.warning("Firebase credentials not found. Authentication features will run in Mock Mode.")
+    db.init_app(app)
+    cors.init_app(app, resources={r"/api/*": {"origins": config.CORS_ORIGINS}})
 
-# Middleware: Mock verification for Firebase Auth when not initialized or in development
-def verify_token(req):
-    if not firebase_initialized:
-        return {"uid": "mock-user-123", "email": "mockuser@pulsewatch.com"}
-    
-    auth_header = req.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        raise ValueError("Missing or invalid authorization header.")
-    
-    token = auth_header.split('Bearer ')[1]
-    try:
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token
-    except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        raise ValueError("Unauthorized access.")
+    init_firebase(config.FIREBASE_CREDENTIALS_PATH)
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Service health status endpoint."""
-    return jsonify({
-        "status": "healthy",
-        "firebase_connected": firebase_initialized,
-        "environment": os.getenv('FLASK_ENV', 'development')
-    }), 200
+    from routes.health import health_bp
+    from routes.predict import predict_bp
+    from routes.profiles import profiles_bp
+    from routes.readings import readings_bp
+    from routes.alerts import alerts_bp
 
-@app.route('/api/predict', methods=['POST'])
-def predict_pulse():
-    """
-    Placeholder endpoint for AI model predictions.
-    Expects input features in JSON format.
-    """
-    try:
-        # Verify user auth token if needed (can be bypassed for simple tests)
-        user = verify_token(request)
-    except ValueError as err:
-        return jsonify({"error": str(err)}), 401
+    app.register_blueprint(health_bp)
+    app.register_blueprint(predict_bp)
+    app.register_blueprint(profiles_bp)
+    app.register_blueprint(readings_bp)
+    app.register_blueprint(alerts_bp)
 
-    data = request.get_json(silent=True) or {}
-    
-    # Placeholder: Input validation and preprocessing
-    # Example input: {"heart_rate": 72, "spo2": 98, "systolic": 120, "diastolic": 80}
-    heart_rate = data.get('heart_rate')
-    spo2 = data.get('spo2')
-    
-    if heart_rate is None or spo2 is None:
-        return jsonify({"error": "Missing required features: heart_rate, spo2"}), 400
+    with app.app_context():
+        db.create_all()
 
-    # Dummy AI model prediction logic (to be replaced by model in backend/models/)
-    # A simple threshold/heuristic rule-based AI stub
-    status = "Normal"
-    recommendation = "Keep maintaining a healthy lifestyle!"
-    
-    if heart_rate > 100 or heart_rate < 60:
-        status = "Irregular Heart Rate"
-        recommendation = "Please rest and monitor your pulse. Contact a healthcare provider if symptoms persist."
-    elif spo2 < 95:
-        status = "Low Oxygen Level"
-        recommendation = "Ensure you are in a well-ventilated area. Seek medical attention if it remains low."
+    @app.route("/")
+    def index():
+        return jsonify(
+            {
+                "service": "pulsewatch-backend",
+                "status": "running",
+                "try": ["/api/health", "/api/profiles", "/api/predict (POST)"],
+            }
+        )
 
-    logger.info(f"Prediction generated for user {user['uid']}: {status}")
+    @app.errorhandler(404)
+    def not_found(e):
+        return jsonify({"error": "Not found", "path": request.path}), 404
 
-    return jsonify({
-        "input_received": data,
-        "prediction": {
-            "status": status,
-            "confidence": 0.92,
-            "recommendation": recommendation
-        }
-    }), 200
+    @app.errorhandler(500)
+    def server_error(e):
+        return jsonify({"error": "Internal server error"}), 500
 
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('FLASK_ENV') == 'development' or True
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    return app
+
+
+app = create_app()
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=config.DEBUG)

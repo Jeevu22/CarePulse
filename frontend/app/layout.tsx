@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, Space_Mono } from "next/font/google";
 import "./globals.css";
+import AppProviders from "@/components/AppProviders";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,12 +21,9 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PULSEWATCH — Dashboard Overview",
-  description: "Real-time health risk insights and predictive analysis.",
+  title: "PULSEWATCH — AI-Assisted Wearable Health Dashboard",
+  description: "Real-time health risk screening and predictive biosignal analytics.",
 };
-
-import { DeviceProfileProvider } from "@/components/DeviceProfileContext";
-import UserProfileModal from "@/components/UserProfileModal";
 
 export default function RootLayout({
   children,
@@ -37,10 +35,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} ${spaceMono.variable} font-sans antialiased`}
       >
-        <DeviceProfileProvider>
-          {children}
-          <UserProfileModal />
-        </DeviceProfileProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

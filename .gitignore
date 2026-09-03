@@ -31,6 +31,11 @@ env/
 backend/.venv/
 backend/venv/
 backend/env/
+*.db
+*.sqlite
+*.sqlite3
+instance/
+backend/instance/
 
 # Environment Variables & Secrets
 .env
@@ -41,6 +46,9 @@ backend/env/
 .env.production.local
 frontend/.env*.local
 backend/.env
+firebase-key.json
+backend/firebase-key.json
+*-firebase-adminsdk-*.json
 
 # Logs
 npm-debug.log*

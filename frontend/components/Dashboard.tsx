@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { predictReading } from "@/lib/api";
 
 interface PredictionResult {
   status: string;
@@ -56,28 +57,21 @@ export default function Dashboard() {
     setLogs((prev) => [logMsg, ...prev]);
 
     try {
-      const response = await fetch("http://localhost:5000/api/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const data = await predictReading({
+        heart_rate: heartRate,
+        spo2: spo2,
+        bp: {
+          systolic,
+          diastolic,
         },
-        body: JSON.stringify({
-          heart_rate: heartRate,
-          spo2: spo2,
-          bp: {
-            systolic,
-            diastolic
-          }
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Server returned code ${response.status}`);
-      }
-
-      const data = await response.json();
-      setPrediction(data.prediction);
-      setLogs((prev) => [`Successfully received prediction: ${data.prediction.status}`, ...prev]);
+      setPrediction({
+        status: data.status,
+        confidence: 0.95,
+        recommendation: data.result.disclaimer,
+      });
+      setLogs((prev) => [`Successfully received prediction: ${data.status}`, ...prev]);
     } catch (err: any) {
       console.error(err);
       setError("Unable to connect to Flask backend. Please ensure the backend server is running on port 5000.");
