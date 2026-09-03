@@ -24,6 +24,8 @@ import {
   FileText,
   Activity,
   AlertTriangle,
+  Gauge,
+  Thermometer,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { useDeviceProfile } from "@/components/DeviceProfileContext";
@@ -196,10 +198,12 @@ function CompositeHealthScore({
   value,
   overallBand,
   disclaimer,
+  onCheckup,
 }: {
   value: number;
   overallBand: string;
   disclaimer?: string;
+  onCheckup: () => void;
 }) {
   const size = 236;
   const cx = 118;
@@ -318,8 +322,25 @@ function CompositeHealthScore({
             {badgeLabel}
           </span>
         </div>
+
       </div>
 
+      <div className="mt-1 flex w-[220px] flex-col items-center justify-center text-center">
+        <p className="text-[11px] font-semibold tracking-tight text-ink">
+          Good morning, Arjun
+        </p>
+        <p className="mt-0.5 max-w-[180px] text-[10px] leading-[1.35] text-slate-500">
+          Your overall health risk is low. Keep maintaining a healthy lifestyle!
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onCheckup}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#3d3a35]"
+      >
+        <Stethoscope className="h-3.5 w-3.5" />
+        Checkup
+      </button>
       <p className="mt-2 max-w-[240px] text-center text-[11px] leading-relaxed text-slate-500">
         Backend clinical scoring engine status: <strong className="uppercase text-ink">{overallBand}</strong>.
       </p>
@@ -472,19 +493,58 @@ function ScreeningModal({
     key: keyof VitalsInput;
     label: string;
     unit: string;
+    reference: string;
+    description: string;
+    icon: ReactNode;
     min: number;
     max: number;
     step?: string;
   }[] = [
-    { key: "heartRate", label: "Heart Rate", unit: "BPM", min: 35, max: 220 },
-    { key: "systolic", label: "Systolic Blood Pressure", unit: "mmHg", min: 70, max: 250 },
-    { key: "diastolic", label: "Diastolic Blood Pressure", unit: "mmHg", min: 40, max: 150 },
-    { key: "spo2", label: "Oxygen Saturation (SpO₂)", unit: "%", min: 70, max: 100 },
-    { key: "temperature", label: "Body Temperature", unit: "°C", min: 30, max: 43, step: "0.1" },
-    { key: "respiratoryRate", label: "Respiratory Rate", unit: "breaths/min", min: 5, max: 60 },
+    { key: "heartRate", label: "Heart Rate", unit: "BPM", reference: "60–100 at rest", description: "Pulse rhythm and rate", icon: <Heart className="h-4 w-4" />, min: 35, max: 220 },
+    { key: "systolic", label: "Systolic Blood Pressure", unit: "mmHg", reference: "Below 120", description: "Pressure as the heart beats", icon: <Gauge className="h-4 w-4" />, min: 70, max: 250 },
+    { key: "diastolic", label: "Diastolic Blood Pressure", unit: "mmHg", reference: "Below 80", description: "Pressure between beats", icon: <Gauge className="h-4 w-4" />, min: 40, max: 150 },
+    { key: "spo2", label: "Oxygen Saturation (SpO₂)", unit: "%", reference: "95–100%", description: "Oxygen carried in the blood", icon: <Droplets className="h-4 w-4" />, min: 70, max: 100 },
+    { key: "temperature", label: "Body Temperature", unit: "°C", reference: "36.1–37.2°C", description: "Core body temperature", icon: <Thermometer className="h-4 w-4" />, min: 30, max: 43, step: "0.1" },
+    { key: "respiratoryRate", label: "Respiratory Rate", unit: "breaths/min", reference: "12–20 at rest", description: "Breaths taken per minute", icon: <Wind className="h-4 w-4" />, min: 5, max: 60 },
   ];
 
   const invalid = values.systolic <= values.diastolic;
+  const vitalSummary = [
+    {
+      label: "Heart Rate",
+      value: `${values.heartRate} BPM`,
+      status: values.heartRate >= 60 && values.heartRate <= 100 ? "Within range" : "Review",
+    },
+    {
+      label: "Blood Pressure",
+      value: `${values.systolic}/${values.diastolic} mmHg`,
+      status: values.systolic < 120 && values.diastolic < 80 ? "Within range" : "Review",
+    },
+    {
+      label: "Oxygen Saturation",
+      value: `${values.spo2}%`,
+      status: values.spo2 >= 95 ? "Within range" : "Review",
+    },
+    {
+      label: "Body Temperature",
+      value: `${values.temperature.toFixed(1)} °C`,
+      status: values.temperature >= 36.1 && values.temperature <= 37.2 ? "Within range" : "Review",
+    },
+    {
+      label: "Respiratory Rate",
+      value: `${values.respiratoryRate} breaths/min`,
+      status: values.respiratoryRate >= 12 && values.respiratoryRate <= 20 ? "Within range" : "Review",
+    },
+  ];
+  const hasVitalsToReview = vitalSummary.some((vital) => vital.status === "Review");
+  const checkupReady = !invalid && vitalSummary.every((vital) => vital.value.length > 0);
+  const sensorStatus = [
+    ["Heart rate", `${values.heartRate} BPM`, "Connected", "text-coral"],
+    ["SpO₂", `${values.spo2}%`, "Connected", "text-cyan-600"],
+    ["Blood pressure", `${values.systolic}/${values.diastolic}`, "Connected", "text-amber-600"],
+    ["Temperature", `${values.temperature.toFixed(1)} °C`, "Connected", "text-violet-500"],
+    ["Respiration", `${values.respiratoryRate}/min`, "Ready", "text-sage"],
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -500,7 +560,7 @@ function ScreeningModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-3xl border border-paper-border bg-[#FAF9F5] p-6 shadow-2xl sm:p-8">
+      <div className="min-h-[78vh] max-h-[94vh] w-full max-w-5xl overflow-auto rounded-3xl border border-paper-border bg-[#FAF9F5] p-6 shadow-2xl sm:p-8 lg:p-10">
         <div className="flex items-start justify-between">
           <div>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-sage">
@@ -521,27 +581,165 @@ function ScreeningModal({
           </button>
         </div>
 
+        <div className="mt-7 grid grid-cols-3 gap-2 border-y border-paper-border py-4 sm:gap-4">
+          {[
+            ["01", "Prepare", "Rest and position"],
+            ["02", "Measure", "Enter six vitals"],
+            ["03", "Review", "Score and interpret"],
+          ].map(([number, label, detail], index) => (
+            <div key={label} className="flex items-center gap-2 sm:gap-3">
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${index === 1 ? "bg-deep-sage text-white" : "bg-[#E8EFE4] text-sage"}`}>
+                {number}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] font-bold text-ink">{label}</span>
+                <span className="hidden text-[10px] text-slate-400 sm:block">{detail}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 rounded-2xl bg-[#103B3D] p-5 text-white sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-xl">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9ED6C0]">Daily checkup</p>
+              <h3 className="mt-2 font-serif text-2xl font-bold">Ready when you are</h3>
+              <p className="mt-2 text-xs leading-relaxed text-[#C1DAD4]">
+                Keep your body relaxed while you enter each reading. The checkup reviews your vital signs together and prepares a clear health summary.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 border-t border-white/15 pt-4 text-left sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-[#8DBBB2]">Duration</p>
+                <p className="mt-1 font-mono text-sm font-bold">~3 min</p>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-[#8DBBB2]">Signals</p>
+                <p className="mt-1 font-mono text-sm font-bold">6 vitals</p>
+              </div>
+              <div>
+                <p className="text-[9px] uppercase tracking-wider text-[#8DBBB2]">Mode</p>
+                <p className="mt-1 font-mono text-sm font-bold">Manual</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {step === "saved" ? (
-          <div className="flex flex-col items-center py-12 text-center">
+          <div className="py-8">
+            <div className="flex flex-col items-center text-center">
             <CheckCircle2 className="h-14 w-14 text-sage" />
             <h3 className="mt-4 font-serif text-xl font-bold text-ink">Screening Evaluated & Stored</h3>
             <p className="mt-2 text-sm text-slate-500">
               Backend scoring engine has analyzed and logged this reading.
             </p>
+            </div>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              {vitalSummary.map((vital) => (
+                <div key={vital.label} className="flex items-center justify-between rounded-2xl border border-paper-border bg-white px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600">{vital.label}</p>
+                    <p className="mt-1 font-mono text-base font-bold text-ink">{vital.value}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold ${vital.status === "Within range" ? "text-sage" : "text-coral"}`}>
+                    {vital.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 rounded-2xl border border-paper-border bg-[#E8EFE4] p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-sage">Clinical interpretation</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink">
+                {hasVitalsToReview
+                  ? "One or more readings are outside the expected reference range. Repeat the checkup at rest and discuss persistent findings with a healthcare professional."
+                  : "All recorded vital signs are within the expected reference ranges for this screening. Continue routine monitoring and healthy daily habits."}
+              </p>
+            </div>
             <button
               type="button"
               onClick={onClose}
-              className="mt-6 rounded-full bg-deep-sage px-5 py-2.5 text-xs font-semibold text-white cursor-pointer"
+              className="mt-6 w-full rounded-full bg-deep-sage px-5 py-2.5 text-xs font-semibold text-white cursor-pointer"
             >
               Return to dashboard
             </button>
           </div>
         ) : (
           <form className="mt-7" onSubmit={handleSubmit}>
+            <div className="mb-6 grid gap-4 lg:grid-cols-[1.45fr_0.8fr]">
+              <div className="rounded-2xl border border-[#C9D9C3] bg-[#E8EFE4] p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-sage">Before you begin</p>
+                <ul className="mt-2 grid gap-1.5 text-xs leading-relaxed text-slate-600 sm:grid-cols-2">
+                  <li>Rest quietly for 5 minutes before measuring.</li>
+                  <li>Keep your arm supported at heart level.</li>
+                  <li>Stay still and breathe normally.</li>
+                  <li>Use the same units shown beside each field.</li>
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-paper-border bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-sage">Checkup steps</p>
+                  <span className={`h-2 w-2 rounded-full ${checkupReady ? "bg-emerald-500" : "bg-amber-500"}`} />
+                </div>
+                <div className="mt-3 space-y-2">
+                  {["Rest and position", "Enter six readings", "Check reference ranges", "Submit for analysis", "Review your report"].map((item, index) => (
+                    <div key={item} className="flex items-center gap-2 text-[10px]">
+                      <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${index < 2 ? "bg-[#E8EFE4] text-sage" : "bg-[#F3F2ED] text-slate-400"}`}>
+                        {index < 2 ? "✓" : index + 1}
+                      </span>
+                      <span className={index < 2 ? "font-semibold text-ink" : "text-slate-500"}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mb-6 rounded-2xl border border-paper-border bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-ink">Sensor status</p>
+                      <p className="mt-1 text-[10px] text-slate-400">Five signal channels ready for this checkup</p>
+                    </div>
+                    <span className="rounded-full bg-[#E8EFE4] px-2.5 py-1 text-[10px] font-bold text-sage">5 / 5 ready</span>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                    {sensorStatus.map(([label, value, status, color]) => (
+                      <div key={label} className="rounded-xl border border-paper-border/80 bg-[#FAF9F5] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`h-2 w-2 rounded-full bg-current ${color}`} />
+                          <span className="text-[9px] font-bold text-emerald-600">{status}</span>
+                        </div>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-500">{label}</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-ink">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+            </div>
+            {step === "saving" && (
+              <div className="mb-5 rounded-2xl border border-[#C9D9C3] bg-white p-4" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-ink">Checking your vital signs</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Sending measurements to the clinical scoring engine...</p>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-sage">IN PROGRESS</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E8EFE4]">
+                  <div className="h-full w-2/3 animate-pulse rounded-full bg-sage" />
+                </div>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {fields.map((field) => (
                 <label key={field.key} className="rounded-2xl border border-paper-border bg-white p-4">
-                  <span className="block text-xs font-semibold text-slate-600">{field.label}</span>
+                  <span className="flex items-start justify-between gap-3">
+                    <span>
+                      <span className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E8EFE4] text-sage">{field.icon}</span>
+                        {field.label}
+                      </span>
+                      <span className="mt-1 block text-[10px] text-slate-400">{field.description}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-[10px] font-semibold text-sage">Ref: {field.reference}</span>
+                  </span>
                   <span className="mt-2 flex items-center gap-2">
                     <input
                       required
@@ -551,6 +749,7 @@ function ScreeningModal({
                       step={field.step ?? "1"}
                       value={values[field.key]}
                       onChange={(e) => update(field.key, e.target.value)}
+                      disabled={step === "saving"}
                       className="w-full bg-transparent font-mono text-xl font-bold text-ink outline-none"
                     />
                     <span className="shrink-0 text-[10px] font-bold uppercase text-slate-400">
@@ -569,7 +768,8 @@ function ScreeningModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-paper-border px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-white cursor-pointer"
+                disabled={step === "saving"}
+                className="rounded-full border border-paper-border px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -761,6 +961,7 @@ export default function OverviewDashboard() {
             value={compositeScore}
             overallBand={overallBand}
             disclaimer={latestPredictResult?.disclaimer}
+            onCheckup={() => setScreeningOpen(true)}
           />
 
           <div className="flex flex-col gap-6">
