@@ -644,7 +644,7 @@ export default function OverviewDashboard() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-2xl border border-paper-border bg-gradient-to-r from-[#E8EFE4] to-[#F0F7EB] p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-6">
+          <section className="mt-20 rounded-2xl border border-paper-border bg-gradient-to-r from-[#E8EFE4] to-[#F0F7EB] p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex flex-col gap-2">
               <p className="text-[12px] font-bold uppercase tracking-widest text-sage">Welcome Back</p>
               <h3 className="font-serif text-2xl font-bold text-ink">
