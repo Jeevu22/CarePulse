@@ -644,6 +644,28 @@ export default function OverviewDashboard() {
             </div>
           </section>
 
+          <section className="mt-6 rounded-2xl border border-paper-border bg-gradient-to-r from-[#E8EFE4] to-[#F0F7EB] p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-col gap-2">
+              <p className="text-[12px] font-bold uppercase tracking-widest text-sage">Welcome Back</p>
+              <h3 className="font-serif text-2xl font-bold text-ink">
+                {profile.name}, let's check your health
+              </h3>
+              <p className="text-[13px] text-slate-500">
+                Your latest vitals show you're in good condition. Keep up the healthy routine!
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setScreeningOpen(true)}
+              className="shrink-0 inline-flex items-center gap-2 rounded-full bg-deep-sage px-6 py-3 text-[13px] font-semibold text-white transition-all hover:bg-[#2C3E2B] active:scale-95 shadow-md"
+            >
+              <span>Switch Checkup</span>
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </section>
+
           <section className="mt-6 flex flex-col gap-6 rounded-2xl border border-paper-border bg-white p-5 shadow-2xs lg:flex-row lg:items-center lg:justify-between">
             <div className="flex max-w-xl items-start gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E8EFE4] text-sage">
@@ -689,28 +711,6 @@ export default function OverviewDashboard() {
                 gradientId="sleepGrad"
               />
             </div>
-          </section>
-
-          <section className="mt-20 rounded-2xl border border-paper-border bg-gradient-to-r from-[#E8EFE4] to-[#F0F7EB] p-6 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-col gap-2">
-              <p className="text-[12px] font-bold uppercase tracking-widest text-sage">Welcome Back</p>
-              <h3 className="font-serif text-2xl font-bold text-ink">
-                {profile.name}, let's check your health
-              </h3>
-              <p className="text-[13px] text-slate-500">
-                Your latest vitals show you're in good condition. Keep up the healthy routine!
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setScreeningOpen(true)}
-              className="shrink-0 inline-flex items-center gap-2 rounded-full bg-deep-sage px-6 py-3 text-[13px] font-semibold text-white transition-all hover:bg-[#2C3E2B] active:scale-95 shadow-md"
-            >
-              <span>Switch Checkup</span>
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
           </section>
 
           <section className="mt-6 grid gap-4 rounded-2xl border border-paper-border bg-[#F7F6F0] p-5 sm:grid-cols-3">
